@@ -42,6 +42,14 @@ test('desktop shell opens the fixed production URL with one narrow OAuth bridge 
   assert.doesNotMatch(source, /window\.zero|frontend\/|productionSource|std\.debug\.print/);
 });
 
+test('desktop OAuth preserves a worker failure category for runtime diagnostics', () => {
+  const source = read('src/main.zig');
+
+  assert.match(source, /failure: anyerror,/);
+  assert.match(source, /self\.outcome = \.\{ \.failure = err \};/);
+  assert.match(source, /runtime\.recordDispatchError\("oauth", err\);/);
+});
+
 test('desktop dependencies and popup patch are pinned to Native SDK 0.10.1', () => {
   const packageJson = JSON.parse(read('package.json'));
   const patch = read('patches/native-sdk-0.10.1-popup-block.patch');

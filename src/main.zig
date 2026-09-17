@@ -120,7 +120,8 @@ const App = struct {
                 defer self.clearHandoff();
                 try runner.reloadPrimaryWebView(runtime, self.app());
             },
-            .failure => {
+            .failure => |err| {
+                runtime.recordDispatchError("oauth", err);
                 self.source_mode = .failure;
                 defer self.source_mode = .startup;
                 try runner.reloadPrimaryWebView(runtime, self.app());
@@ -156,7 +157,7 @@ const OAuthWorker = struct {
             handoff_url: [16 * 1024]u8,
             handoff_len: usize,
         },
-        failure,
+        failure: anyerror,
     };
 
     io: std.Io,
@@ -166,11 +167,11 @@ const OAuthWorker = struct {
     wake: native_sdk.platform.PlatformServices,
     thread: ?std.Thread = null,
     finished: std.atomic.Value(bool) = .init(false),
-    outcome: Outcome = .failure,
+    outcome: Outcome = .{ .failure = error.OAuthWorkerNotStarted },
 
     fn run(self: *OAuthWorker) void {
-        self.complete() catch {
-            self.outcome = .failure;
+        self.complete() catch |err| {
+            self.outcome = .{ .failure = err };
         };
         self.finished.store(true, .release);
         self.wake.wake() catch {};
