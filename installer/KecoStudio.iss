@@ -17,7 +17,7 @@ Source: "{#SourceDir}\WebView2Bootstrapper.exe"; DestDir: "{tmp}"; Flags: delete
 Name: "desktopicon"; Description: "Create a desktop shortcut"
 [Icons]
 Name: "{autoprograms}\Keco Studio"; Filename: "{app}\bin\keco-studio.exe"
-Name: "{autodesktop}\Keco Studio"; Filename: "{app}\bin\keco-studio.exe"; Tasks: desktopicon
+Name: "{autodesktop}\Keco Studio"; Filename: "{app}\bin\keco-studio.exe"; IconFilename: "{app}\app-icon.ico"; IconIndex: 0; Tasks: desktopicon
 [Run]
 Filename: "{tmp}\WebView2Bootstrapper.exe"; Parameters: "/silent /install"; Check: not WebView2RuntimeInstalled; Flags: waituntilterminated
 [UninstallDelete]

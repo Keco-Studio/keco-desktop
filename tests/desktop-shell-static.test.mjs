@@ -90,7 +90,7 @@ test('Windows installer offers a default desktop shortcut task', () => {
   assert.match(installer, /\[Tasks\]/);
   assert.match(installer, /Name: "desktopicon"; Description: "Create a desktop shortcut"/);
   assert.doesNotMatch(installer, /Name: "desktopicon";[^\n]*Flags: unchecked/);
-  assert.match(installer, /Name: "\{autodesktop\}\\Keco Studio"; Filename: "\{app\}\\bin\\keco-studio\.exe"; Tasks: desktopicon/);
+  assert.match(installer, /Name: "\{autodesktop\}\\Keco Studio"; Filename: "\{app\}\\bin\\keco-studio\.exe"; IconFilename: "\{app\}\\app-icon\.ico"; IconIndex: 0; Tasks: desktopicon/);
 });
 
 test('macOS DMG includes an optional desktop shortcut helper', () => {
