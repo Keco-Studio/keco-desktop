@@ -101,6 +101,7 @@ pub fn build(b: *std.Build) void {
     options.addOption(bool, "automation", automation_enabled);
     options.addOption(bool, "js_bridge", js_bridge_enabled);
     options.addOption(bool, "web_layer", web_layer);
+    options.addOption([]const u8, "supabase_anon_key", b.option([]const u8, "supabase-anon-key", "Public Supabase anon key for desktop PKCE exchange") orelse "");
     const options_mod = options.createModule();
 
     const runner_mod = localModule(b, target, optimize, "src/runner.zig");
@@ -114,6 +115,7 @@ pub fn build(b: *std.Build) void {
     const app_mod = localModule(b, target, optimize, "src/main.zig");
     app_mod.addImport("native_sdk", native_sdk_mod);
     app_mod.addImport("runner", runner_mod);
+    app_mod.addImport("build_options", options_mod);
     if (app_config.sqlite_capability) addSqliteEngine(b, app_mod, native_sdk_path);
     addMacosInfoPlist(b, app_mod, target, app_config);
     const exe = b.addExecutable(.{
@@ -165,6 +167,7 @@ pub fn build(b: *std.Build) void {
         const package_app_mod = localModule(b, target, package_optimize, "src/main.zig");
         package_app_mod.addImport("native_sdk", package_sdk_mod);
         package_app_mod.addImport("runner", package_runner_mod);
+        package_app_mod.addImport("build_options", options_mod);
         if (app_config.sqlite_capability) addSqliteEngine(b, package_app_mod, native_sdk_path);
         addMacosInfoPlist(b, package_app_mod, target, app_config);
         const built = b.addExecutable(.{
@@ -222,6 +225,12 @@ pub fn build(b: *std.Build) void {
     const tests = b.addTest(.{ .root_module = app_mod });
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&b.addRunArtifact(tests).step);
+
+    const oauth_mod = localModule(b, target, optimize, "src/oauth.zig");
+    const oauth_tests_mod = localModule(b, target, optimize, "tests/oauth.test.zig");
+    oauth_tests_mod.addImport("oauth", oauth_mod);
+    const oauth_tests = b.addTest(.{ .root_module = oauth_tests_mod });
+    test_step.dependOn(&b.addRunArtifact(oauth_tests).step);
 }
 
 // Zig 0.16.0's self-hosted x86_64 backend miscompiles the SysV C

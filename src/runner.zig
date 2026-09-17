@@ -35,6 +35,8 @@ pub const RunOptions = struct {
     bundle_id: []const u8,
     icon_path: []const u8 = "assets/icon.png",
     bridge: ?native_sdk.BridgeDispatcher = null,
+    runtime_ready: ?*const fn (context: *anyopaque, runtime: *native_sdk.Runtime) void = null,
+    runtime_context: ?*anyopaque = null,
     builtin_bridge: native_sdk.BridgePolicy = .{},
     security: native_sdk.SecurityPolicy = .{},
     js_window_api: bool = false,
@@ -609,6 +611,14 @@ pub fn runWithOptions(app: native_sdk.App, options: RunOptions, init: std.proces
     }
 }
 
+/// Reload the primary WebView from `app` on the platform event-loop thread.
+/// Worker threads must use `PlatformServices.wake` and let an app event invoke
+/// this helper instead of calling WebView services directly.
+pub fn reloadPrimaryWebView(runtime: *native_sdk.Runtime, app: native_sdk.App) !void {
+    const source = try app.webViewSource();
+    try runtime.options.platform.services.loadWindowWebView(1, source);
+}
+
 fn runNull(app: native_sdk.App, options: RunOptions, init: std.process.Init) !void {
     var buffers: StateBuffers = undefined;
     var app_info = options.appInfo(&buffers);
@@ -663,6 +673,7 @@ fn runNull(app: native_sdk.App, options: RunOptions, init: std.process.Init) !vo
         .file_access = options.file_access,
         .environ = init.minimal.environ,
     });
+    if (options.runtime_ready) |ready| ready(options.runtime_context orelse unreachable, runtime);
 
     try runtime.run(app);
 }
@@ -721,6 +732,7 @@ fn runMacos(app: native_sdk.App, options: RunOptions, init: std.process.Init) !v
         .file_access = options.file_access,
         .environ = init.minimal.environ,
     });
+    if (options.runtime_ready) |ready| ready(options.runtime_context orelse unreachable, runtime);
 
     try runtime.run(app);
 }
@@ -779,6 +791,7 @@ fn runLinux(app: native_sdk.App, options: RunOptions, init: std.process.Init) !v
         .file_access = options.file_access,
         .environ = init.minimal.environ,
     });
+    if (options.runtime_ready) |ready| ready(options.runtime_context orelse unreachable, runtime);
 
     try runtime.run(app);
 }
@@ -837,6 +850,7 @@ fn runWindows(app: native_sdk.App, options: RunOptions, init: std.process.Init) 
         .file_access = options.file_access,
         .environ = init.minimal.environ,
     });
+    if (options.runtime_ready) |ready| ready(options.runtime_context orelse unreachable, runtime);
 
     try runtime.run(app);
 }
