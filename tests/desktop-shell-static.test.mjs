@@ -50,6 +50,13 @@ test('desktop OAuth preserves a worker failure category for runtime diagnostics'
   assert.match(source, /runtime\.recordDispatchError\("oauth", err\);/);
 });
 
+test('loopback callback describes pending completion instead of claiming sign-in success', () => {
+  const source = read('src/oauth.zig');
+
+  assert.match(source, /Finishing sign-in/);
+  assert.doesNotMatch(source, /You can return to Keco Studio/);
+});
+
 test('desktop dependencies and popup patch are pinned to Native SDK 0.10.1', () => {
   const packageJson = JSON.parse(read('package.json'));
   const patch = read('patches/native-sdk-0.10.1-popup-block.patch');
