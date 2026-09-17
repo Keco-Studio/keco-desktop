@@ -9,25 +9,36 @@ test "PKCE challenge is SHA-256 base64url without padding" {
     );
 }
 
-test "callback accepts one matching code and rejects a replay" {
+test "callback accepts a Supabase code-only callback and rejects a replay" {
+    var transaction = oauth.Transaction.forTest("expected-state", "verifier");
+
+    try std.testing.expectEqualStrings(
+        "code-a",
+        try transaction.consumeCallback("/auth/desktop/callback?code=code-a"),
+    );
+    try std.testing.expectError(
+        error.CallbackAlreadyConsumed,
+        transaction.consumeCallback("/auth/desktop/callback?code=code-b"),
+    );
+}
+
+test "callback accepts a matching state when the provider supplies it" {
     var transaction = oauth.Transaction.forTest("expected-state", "verifier");
 
     try std.testing.expectEqualStrings(
         "code-a",
         try transaction.consumeCallback("/auth/desktop/callback?code=code-a&state=expected-state"),
     );
-    try std.testing.expectError(
-        error.CallbackAlreadyConsumed,
-        transaction.consumeCallback("/auth/desktop/callback?code=code-b&state=expected-state"),
-    );
 }
 
-test "callback rejects malformed, repeated, and mismatched state" {
+test "callback rejects malformed, repeated, and mismatched state when supplied" {
     var transaction = oauth.Transaction.forTest("expected-state", "verifier");
 
     try std.testing.expectError(error.InvalidCallback, transaction.consumeCallback("/"));
     try std.testing.expectError(error.InvalidCallback, transaction.consumeCallback("/auth/desktop/callback?state=expected-state"));
-    try std.testing.expectError(error.InvalidCallback, transaction.consumeCallback("/auth/desktop/callback?code=a&code=b&state=expected-state"));
+    try std.testing.expectError(error.InvalidCallback, transaction.consumeCallback("/auth/desktop/callback?code=a&code=b"));
+    try std.testing.expectError(error.InvalidCallback, transaction.consumeCallback("/auth/desktop/callback?code=code-a&state=expected-state&state=expected-state"));
+    try std.testing.expectError(error.InvalidCallback, transaction.consumeCallback("/auth/desktop/callback?code=code-a&unexpected=value"));
     try std.testing.expectError(error.StateMismatch, transaction.consumeCallback("/auth/desktop/callback?code=code-a&state=wrong"));
 }
 
@@ -143,7 +154,7 @@ test "callback continues after a malformed request" {
     defer valid.close(io);
     var valid_buffer: [256]u8 = undefined;
     var valid_writer = valid.writer(io, &valid_buffer);
-    try valid_writer.interface.writeAll("GET /auth/desktop/callback?code=code-a&state=expected-state HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+    try valid_writer.interface.writeAll("GET /auth/desktop/callback?code=code-a HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
     try valid_writer.interface.flush();
 
     thread.join();
@@ -189,7 +200,7 @@ test "partial request times out before a valid callback arrives" {
     defer valid.close(io);
     var valid_buffer: [256]u8 = undefined;
     var valid_writer = valid.writer(io, &valid_buffer);
-    try valid_writer.interface.writeAll("GET /auth/desktop/callback?code=code-a&state=expected-state HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+    try valid_writer.interface.writeAll("GET /auth/desktop/callback?code=code-a HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
     try valid_writer.interface.flush();
 
     thread.join();

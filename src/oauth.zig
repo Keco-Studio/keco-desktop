@@ -163,8 +163,8 @@ pub const Transaction = struct {
                 return error.InvalidCallback;
             }
         }
-        if (!has_state or !has_code) return error.InvalidCallback;
-        if (!std.mem.eql(u8, parsed_state[0..parsed_state_len], self.stateValue())) return error.StateMismatch;
+        if (!has_code) return error.InvalidCallback;
+        if (has_state and !std.mem.eql(u8, parsed_state[0..parsed_state_len], self.stateValue())) return error.StateMismatch;
 
         self.consumed = true;
         @memcpy(self.callback_code[0..parsed_code_len], parsed_code[0..parsed_code_len]);
