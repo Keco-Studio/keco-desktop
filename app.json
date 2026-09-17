@@ -25,6 +25,18 @@
     },
     "web_engine": "system",
     "cef": { "dir": "third_party/cef/macos", "auto_install": false },
+    "dmg": {
+        "items": [
+            { "kind": "app", "position": { "x": 166, "y": 182 } },
+            { "kind": "applications", "position": { "x": 486, "y": 182 } },
+            {
+                "kind": "file",
+                "path": "installer/macos/Create Desktop Shortcut.command",
+                "name": "Create Desktop Shortcut.command",
+                "position": { "x": 330, "y": 182 }
+            }
+        ]
+    },
     "windows": [
         { "label": "main", "title":"Keco Studio", "width": 1280, "height": 800, "restore_state": true }
     ]

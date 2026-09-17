@@ -83,3 +83,28 @@ test('desktop release workflow is owned at the repository root', () => {
   assert.equal((build.match(/\.win32_manifest = nativeSdkPath\(b, native_sdk_path, "assets\/native-sdk\.manifest"\);/g) ?? []).length, 2);
   assert.match(workflow, /-Dsupabase-anon-key="\$\{\{ secrets\.NEXT_PUBLIC_SUPABASE_ANON_KEY \}\}"/);
 });
+
+test('Windows installer offers a default desktop shortcut task', () => {
+  const installer = read('installer/KecoStudio.iss');
+
+  assert.match(installer, /\[Tasks\]/);
+  assert.match(installer, /Name: "desktopicon"; Description: "Create a desktop shortcut"/);
+  assert.doesNotMatch(installer, /Name: "desktopicon";[^\n]*Flags: unchecked/);
+  assert.match(installer, /Name: "\{autodesktop\}\\Keco Studio"; Filename: "\{app\}\\bin\\keco-studio\.exe"; Tasks: desktopicon/);
+});
+
+test('macOS DMG includes an optional desktop shortcut helper', () => {
+  const manifest = JSON.parse(read('app.json'));
+  const helper = read('installer/macos/Create Desktop Shortcut.command');
+  const helperItem = manifest.dmg?.items?.find((item) => item.path === 'installer/macos/Create Desktop Shortcut.command');
+
+  assert.deepEqual(helperItem, {
+    kind: 'file',
+    path: 'installer/macos/Create Desktop Shortcut.command',
+    name: 'Create Desktop Shortcut.command',
+    position: { x: 330, y: 182 },
+  });
+  assert.match(helper, /Desktop\/Keco Studio/);
+  assert.match(helper, /Applications\/Keco Studio\.app/);
+  assert.match(helper, /ln -sfn/);
+});
