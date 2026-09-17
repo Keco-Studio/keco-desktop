@@ -180,8 +180,6 @@ const OAuthWorker = struct {
     fn complete(self: *OAuthWorker) !void {
         defer self.transaction.clear();
         const code = try oauth.acceptLoopbackCallback(self.io, &self.listener, &self.transaction, &self.control);
-        var redirect_uri: [128]u8 = undefined;
-        const redirect_url = try self.transaction.callbackUrl(&redirect_uri);
         var tokens_buffer: [16 * 1024]u8 = undefined;
         defer @memset(&tokens_buffer, 0);
         const tokens = try oauth.exchangeCodeWithTimeout(
@@ -189,7 +187,6 @@ const OAuthWorker = struct {
             std.heap.page_allocator,
             config.supabase_origin,
             config.supabase_anon_key,
-            redirect_url,
             code,
             self.transaction.verifierValue(),
             &tokens_buffer,

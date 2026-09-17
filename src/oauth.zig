@@ -317,35 +317,31 @@ pub fn exchangeCode(
     allocator: std.mem.Allocator,
     supabase_origin: []const u8,
     anon_key: []const u8,
-    redirect_uri: []const u8,
     code: []const u8,
     verifier: []const u8,
     token_output: []u8,
 ) !SessionTokens {
     if (anon_key.len == 0) return error.MissingSupabaseAnonKey;
     var payload: [8192]u8 = undefined;
-    var payload_writer = std.Io.Writer.fixed(&payload);
-    try payload_writer.writeAll("auth_code=");
-    try appendPercentEncoded(&payload_writer, code);
-    try payload_writer.writeAll("&code_verifier=");
-    try appendPercentEncoded(&payload_writer, verifier);
-    try payload_writer.writeAll("&redirect_uri=");
-    try appendPercentEncoded(&payload_writer, redirect_uri);
+    const payload_value = try tokenExchangePayload(code, verifier, &payload);
 
     var endpoint: [256]u8 = undefined;
     const endpoint_url = try std.fmt.bufPrint(&endpoint, "{s}/auth/v1/token?grant_type=pkce", .{supabase_origin});
     const uri = try std.Uri.parse(endpoint_url);
+    var authorization: [2048]u8 = undefined;
+    const authorization_value = try std.fmt.bufPrint(&authorization, "Bearer {s}", .{anon_key});
     const headers = [_]std.http.Header{
         .{ .name = "apikey", .value = anon_key },
-        .{ .name = "content-type", .value = "application/x-www-form-urlencoded" },
+        .{ .name = "authorization", .value = authorization_value },
+        .{ .name = "content-type", .value = "application/json;charset=UTF-8" },
     };
     var client: std.http.Client = .{ .allocator = allocator, .io = io };
     defer client.deinit();
     var request = try client.request(.POST, uri, .{ .keep_alive = false, .extra_headers = &headers });
     defer request.deinit();
-    request.transfer_encoding = .{ .content_length = payload_writer.buffered().len };
+    request.transfer_encoding = .{ .content_length = payload_value.len };
     var body = try request.sendBodyUnflushed(&.{});
-    try body.writer.writeAll(payload_writer.buffered());
+    try body.writer.writeAll(payload_value);
     try body.end();
     try request.connection.?.flush();
 
@@ -364,12 +360,20 @@ pub fn exchangeCode(
     return parseSessionTokens(response_writer.buffered(), token_output);
 }
 
+pub fn tokenExchangePayload(code: []const u8, verifier: []const u8, output: []u8) ![]const u8 {
+    var writer = std.Io.Writer.fixed(output);
+    try std.json.Stringify.value(.{
+        .auth_code = code,
+        .code_verifier = verifier,
+    }, .{}, &writer);
+    return writer.buffered();
+}
+
 pub fn exchangeCodeWithTimeout(
     io: std.Io,
     allocator: std.mem.Allocator,
     supabase_origin: []const u8,
     anon_key: []const u8,
-    redirect_uri: []const u8,
     code: []const u8,
     verifier: []const u8,
     token_output: []u8,
@@ -386,7 +390,6 @@ pub fn exchangeCodeWithTimeout(
         allocator,
         supabase_origin,
         anon_key,
-        redirect_uri,
         code,
         verifier,
         token_output,
@@ -410,12 +413,11 @@ fn exchangeCodeTask(
     allocator: std.mem.Allocator,
     supabase_origin: []const u8,
     anon_key: []const u8,
-    redirect_uri: []const u8,
     code: []const u8,
     verifier: []const u8,
     token_output: []u8,
 ) anyerror!SessionTokens {
-    return exchangeCode(io, allocator, supabase_origin, anon_key, redirect_uri, code, verifier, token_output);
+    return exchangeCode(io, allocator, supabase_origin, anon_key, code, verifier, token_output);
 }
 
 fn exchangeDeadlineTask(io: std.Io) std.Io.Cancelable!void {
@@ -435,7 +437,7 @@ fn appendPercentEncoded(writer: *std.Io.Writer, value: []const u8) !void {
     }
 }
 
-const callbackSuccessHtml = "<!doctype html><title>Keco Studio</title><p>You can return to Keco Studio.</p>";
+const callbackSuccessHtml = "<!doctype html><title>Keco Studio</title><p>Finishing sign-in...</p><p>You can close this page after Keco Studio opens.</p>";
 const callbackFailureHtml = "<!doctype html><title>Keco Studio</title><p>Sign-in could not be completed. You can close this page.</p>";
 
 const Deadline = struct {

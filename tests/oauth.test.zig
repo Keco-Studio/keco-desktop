@@ -88,6 +88,24 @@ test "token exchange deadline is bounded" {
     try std.testing.expectEqual(@as(i64, 15), oauth.token_exchange_timeout_seconds);
 }
 
+test "token exchange payload is JSON with only the Supabase PKCE fields" {
+    var output: [256]u8 = undefined;
+
+    try std.testing.expectEqualStrings(
+        "{\"auth_code\":\"code-a\",\"code_verifier\":\"verifier-a\"}",
+        try oauth.tokenExchangePayload("code-a", "verifier-a", &output),
+    );
+}
+
+test "token exchange payload JSON escapes credential values" {
+    var output: [256]u8 = undefined;
+
+    try std.testing.expectEqualStrings(
+        "{\"auth_code\":\"code\\\"\\\\\\n\",\"code_verifier\":\"verifier\\t\"}",
+        try oauth.tokenExchangePayload("code\"\\\n", "verifier\t", &output),
+    );
+}
+
 test "partial loopback request cannot outlive callback deadline" {
     var threaded = std.Io.Threaded.init(std.testing.allocator, .{});
     defer threaded.deinit();
